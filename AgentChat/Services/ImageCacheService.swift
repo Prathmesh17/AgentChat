@@ -15,29 +15,92 @@ class ImageCacheService {
     static let shared = ImageCacheService()
     
     private let fileManager = FileManager.default
-    private let cacheDirectory: URL
+    
+    // Store the images directly by their path for immediate access
+    private var recentlySavedImages: [String: UIImage] = [:]
+    private let recentLock = NSLock()
+    
+    private var cacheDirectory: URL {
+        let paths = fileManager.urls(for: .cachesDirectory, in: .userDomainMask)
+        let directory = paths[0].appendingPathComponent("ImageCache")
+        
+        // Create directory if it doesn't exist
+        if !fileManager.fileExists(atPath: directory.path) {
+            try? fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
+        }
+        
+        return directory
+    }
+    
+    // Memory cache for network images
+    private let memoryCache = NSCache<NSString, UIImage>()
+    
+    // Track ongoing downloads to avoid duplicate requests
+    private var ongoingTasks: [String: Task<UIImage?, Never>] = [:]
+    private let taskLock = NSLock()
     
     // MARK: - Initialization
     private init() {
-        // Set up cache directory
-        let paths = fileManager.urls(for: .cachesDirectory, in: .userDomainMask)
-        cacheDirectory = paths[0].appendingPathComponent("ImageCache")
-        
-        // Create directory if it doesn't exist
-        try? fileManager.createDirectory(at: cacheDirectory, withIntermediateDirectories: true)
+        memoryCache.countLimit = 100
+        memoryCache.totalCostLimit = 50 * 1024 * 1024
     }
     
     // MARK: - Public Methods
     
-    /// Load image from URL
+    /// Load image from URL with caching
     func loadImage(from urlString: String) async -> UIImage? {
+        let cacheKey = NSString(string: urlString)
+        
+        // Check memory cache first
+        if let cachedImage = memoryCache.object(forKey: cacheKey) {
+            return cachedImage
+        }
+        
+        // Check if there's an ongoing task for this URL
+        taskLock.lock()
+        if let existingTask = ongoingTasks[urlString] {
+            taskLock.unlock()
+            return await existingTask.value
+        }
+        
+        // Create a new task
+        let task = Task<UIImage?, Never> {
+            await downloadImage(from: urlString)
+        }
+        ongoingTasks[urlString] = task
+        taskLock.unlock()
+        
+        let result = await task.value
+        
+        taskLock.lock()
+        ongoingTasks.removeValue(forKey: urlString)
+        taskLock.unlock()
+        
+        return result
+    }
+    
+    /// Download image from network
+    private func downloadImage(from urlString: String) async -> UIImage? {
         guard let url = URL(string: urlString) else { return nil }
         
         do {
-            let (data, _) = try await URLSession.shared.data(from: url)
-            return UIImage(data: data)
+            let (data, response) = try await URLSession.shared.data(from: url)
+            
+            guard let httpResponse = response as? HTTPURLResponse,
+                  httpResponse.statusCode == 200 else {
+                return nil
+            }
+            
+            guard let image = UIImage(data: data) else { return nil }
+            
+            let cacheKey = NSString(string: urlString)
+            memoryCache.setObject(image, forKey: cacheKey)
+            
+            return image
         } catch {
-            print("❌ Failed to load image: \(error)")
+            if (error as NSError).code != NSURLErrorCancelled {
+                print("❌ Failed to load image: \(error.localizedDescription)")
+            }
             return nil
         }
     }
@@ -45,18 +108,81 @@ class ImageCacheService {
     /// Save image locally and return the file path
     func saveImageLocally(_ image: UIImage, filename: String? = nil) -> (path: String, fileSize: Int)? {
         let imageName = filename ?? UUID().uuidString
-        let imagePath = cacheDirectory.appendingPathComponent("\(imageName).jpg")
+        let imageFileName = "\(imageName).jpg"
+        let imageURL = cacheDirectory.appendingPathComponent(imageFileName)
         
-        // Save image as JPEG
-        guard let imageData = image.jpegData(compressionQuality: 0.8) else { return nil }
+        guard let imageData = image.jpegData(compressionQuality: 0.8) else {
+            print("❌ Failed to create JPEG data")
+            return nil
+        }
         
         do {
-            try imageData.write(to: imagePath)
-            return (imagePath.path, imageData.count)
+            try imageData.write(to: imageURL)
+            let savedPath = imageURL.path
+            
+            // Store in recent cache for immediate access
+            recentLock.lock()
+            recentlySavedImages[savedPath] = image
+            recentLock.unlock()
+            
+            print("✅ Image saved: \(savedPath)")
+            return (savedPath, imageData.count)
         } catch {
             print("❌ Failed to save image: \(error)")
             return nil
         }
+    }
+    
+    /// Load image from local file path
+    func loadLocalImage(from path: String) -> UIImage? {
+        // 1. Check recently saved cache
+        recentLock.lock()
+        if let image = recentlySavedImages[path] {
+            recentLock.unlock()
+            return image
+        }
+        recentLock.unlock()
+        
+        // 2. Try loading directly from path
+        if let image = UIImage(contentsOfFile: path) {
+            recentLock.lock()
+            recentlySavedImages[path] = image
+            recentLock.unlock()
+            return image
+        }
+        
+        // 3. Try using file URL
+        let fileURL = URL(fileURLWithPath: path)
+        if let data = try? Data(contentsOf: fileURL), let image = UIImage(data: data) {
+            recentLock.lock()
+            recentlySavedImages[path] = image
+            recentLock.unlock()
+            return image
+        }
+        
+        // 4. Extract filename and try from cache directory
+        if let filename = URL(fileURLWithPath: path).lastPathComponent.removingPercentEncoding ?? path.components(separatedBy: "/").last {
+            let cacheURL = cacheDirectory.appendingPathComponent(filename)
+            if let image = UIImage(contentsOfFile: cacheURL.path) {
+                recentLock.lock()
+                recentlySavedImages[path] = image
+                recentLock.unlock()
+                return image
+            }
+        }
+        
+        print("❌ Could not load image from: \(path)")
+        print("   File exists: \(fileManager.fileExists(atPath: path))")
+        
+        return nil
+    }
+    
+    /// Clear all caches
+    func clearCache() {
+        memoryCache.removeAllObjects()
+        recentLock.lock()
+        recentlySavedImages.removeAll()
+        recentLock.unlock()
     }
 }
 
@@ -67,6 +193,7 @@ struct CachedAsyncImage: View {
     
     @State private var image: UIImage?
     @State private var isLoading = true
+    @State private var loadTask: Task<Void, Never>?
     
     init(url: String, contentMode: ContentMode = .fill) {
         self.url = url
@@ -91,20 +218,31 @@ struct CachedAsyncImage: View {
                     .background(Color.gray.opacity(0.1))
             }
         }
-        .task {
-            await loadImage()
+        .onAppear {
+            loadImageIfNeeded()
+        }
+        .onDisappear {
+            loadTask?.cancel()
         }
     }
     
-    private func loadImage() async {
-        if let loadedImage = await ImageCacheService.shared.loadImage(from: url) {
-            await MainActor.run {
-                self.image = loadedImage
-                self.isLoading = false
-            }
-        } else {
-            await MainActor.run {
-                self.isLoading = false
+    private func loadImageIfNeeded() {
+        guard image == nil else { return }
+        
+        loadTask = Task {
+            if let loadedImage = await ImageCacheService.shared.loadImage(from: url) {
+                guard !Task.isCancelled else { return }
+                
+                await MainActor.run {
+                    self.image = loadedImage
+                    self.isLoading = false
+                }
+            } else {
+                guard !Task.isCancelled else { return }
+                
+                await MainActor.run {
+                    self.isLoading = false
+                }
             }
         }
     }

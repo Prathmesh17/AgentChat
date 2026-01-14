@@ -38,12 +38,12 @@ struct ChatView: View {
                 }
             )
         }
-        .navigationTitle("Support Chat")
+        .navigationTitle("Agent Chat")
         .navigationBarTitleDisplayMode(.inline)
         .fullScreenCover(isPresented: $showFullScreenImage) {
             FullScreenImageView(imagePath: selectedImagePath)
         }
-        .sheet(isPresented: $showCamera) {
+        .fullScreenCover(isPresented: $showCamera) {
             CameraView { image in
                 if let image = image {
                     viewModel.handleSelectedImage(image)
@@ -76,28 +76,38 @@ struct ChatView: View {
                     
                     // Bottom spacer for scroll anchor
                     Color.clear
-                        .frame(height: 8)
+                        .frame(height: 16)
                         .id("bottomAnchor")
                 }
                 .padding(.vertical, 8)
             }
             .scrollDismissesKeyboard(.interactively)
+            .onTapGesture {
+                // Dismiss keyboard when tapping on message list
+                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+            }
             .onAppear {
-                // Scroll to bottom on appear with animation
-                scrollToBottom(proxy: proxy)
+                // Scroll to bottom on appear - use multiple delays to handle image loading
+                scrollToBottom(proxy: proxy, delay: 0.1)
+                scrollToBottom(proxy: proxy, delay: 0.5)
             }
             .onChange(of: viewModel.messages.count) { _, _ in
                 // Scroll to bottom when new message added with animation
-                scrollToBottom(proxy: proxy)
+                scrollToBottom(proxy: proxy, delay: 0.1)
             }
         }
     }
     
     // MARK: - Scroll to Bottom Helper
-    private func scrollToBottom(proxy: ScrollViewProxy) {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+    private func scrollToBottom(proxy: ScrollViewProxy, delay: Double = 0.1) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
             withAnimation(.easeOut(duration: 0.3)) {
-                proxy.scrollTo("bottomAnchor", anchor: .bottom)
+                // Scroll to the last message if available, otherwise scroll to bottom anchor
+                if let lastMessage = viewModel.messages.last {
+                    proxy.scrollTo(lastMessage.id, anchor: .bottom)
+                } else {
+                    proxy.scrollTo("bottomAnchor", anchor: .bottom)
+                }
             }
         }
     }

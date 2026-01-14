@@ -135,7 +135,7 @@ struct FullScreenImageView: View {
         } else {
             // Load from local file
             await MainActor.run {
-                if let localImage = UIImage(contentsOfFile: imagePath) {
+                if let localImage = ImageCacheService.shared.loadLocalImage(from: imagePath) {
                     self.image = localImage
                 }
                 self.isLoading = false

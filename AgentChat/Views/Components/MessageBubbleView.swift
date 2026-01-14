@@ -116,7 +116,7 @@ struct MessageBubbleView: View {
     
     @ViewBuilder
     private func localImageView(path: String) -> some View {
-        if let image = UIImage(contentsOfFile: path) {
+        if let image = ImageCacheService.shared.loadLocalImage(from: path) {
             Image(uiImage: image)
                 .resizable()
                 .aspectRatio(contentMode: .fill)
