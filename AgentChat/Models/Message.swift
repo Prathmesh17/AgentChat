@@ -63,6 +63,52 @@ struct Message: Codable, Identifiable, Equatable {
         sender == .user
     }
     
+    // MARK: - Smart Timestamp Formatting
+    
+    /// Returns a smart formatted timestamp string
+    func formattedTimestamp(relativeTo now: Date = Date()) -> String {
+        let calendar = Calendar.current
+        let messageDate = self.date
+        let timeDifference = now.timeIntervalSince(messageDate)
+        
+        // Less than 1 minute ago
+        if timeDifference < 60 {
+            return "Just now"
+        }
+        
+        // Less than 1 hour ago
+        if timeDifference < 3600 {
+            let minutes = Int(timeDifference / 60)
+            return minutes == 1 ? "1 minute ago" : "\(minutes) minutes ago"
+        }
+        
+        // Check if it's today
+        if calendar.isDateInToday(messageDate) {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "h:mm a"
+            return "Today at \(formatter.string(from: messageDate))"
+        }
+        
+        // Check if it's yesterday
+        if calendar.isDateInYesterday(messageDate) {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "h:mm a"
+            return "Yesterday at \(formatter.string(from: messageDate))"
+        }
+        
+        // Within the last week
+        if timeDifference < 7 * 24 * 3600 {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "EEEE 'at' h:mm a"
+            return formatter.string(from: messageDate)
+        }
+        
+        // Older messages
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMM d, yyyy 'at' h:mm a"
+        return formatter.string(from: messageDate)
+    }
+    
     /// Simple time format for message bubbles (e.g., "2:30 PM")
     var simpleTimeFormat: String {
         let formatter = DateFormatter()

@@ -38,8 +38,20 @@ struct ChatView: View {
                 }
             )
         }
+        .background(Color(.systemBackground))
         .navigationTitle("Agent Chat")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(.visible, for: .navigationBar)
+        .onAppear {
+            // Force opaque navigation bar
+            let appearance = UINavigationBarAppearance()
+            appearance.configureWithOpaqueBackground()
+            appearance.backgroundColor = UIColor.systemBackground
+            appearance.shadowColor = UIColor.separator
+            UINavigationBar.appearance().standardAppearance = appearance
+            UINavigationBar.appearance().scrollEdgeAppearance = appearance
+            UINavigationBar.appearance().compactAppearance = appearance
+        }
         .fullScreenCover(isPresented: $showFullScreenImage) {
             FullScreenImageView(imagePath: selectedImagePath)
         }
@@ -61,7 +73,12 @@ struct ChatView: View {
     private var messagesScrollView: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                LazyVStack(spacing: 0) {
+                LazyVStack(spacing: 2) {
+                    // Date header for first message
+                    if let firstMessage = viewModel.messages.first {
+                        dateHeader(for: firstMessage.date)
+                    }
+                    
                     // Messages
                     ForEach(viewModel.messages) { message in
                         MessageBubbleView(
@@ -72,15 +89,27 @@ struct ChatView: View {
                             }
                         )
                         .id(message.id)
+                        .transition(.asymmetric(
+                            insertion: .opacity.combined(with: .move(edge: .bottom)),
+                            removal: .opacity
+                        ))
+                    }
+                    
+                    // Typing Indicator
+                    if viewModel.isTyping {
+                        TypingIndicatorView()
+                            .id("typingIndicator")
+                            .transition(.opacity.combined(with: .move(edge: .bottom)))
                     }
                     
                     // Bottom spacer for scroll anchor
                     Color.clear
-                        .frame(height: 16)
+                        .frame(height: 25)
                         .id("bottomAnchor")
                 }
-                .padding(.vertical, 8)
+                .padding(.top, 12)
             }
+            .background(Color(.systemBackground))
             .scrollDismissesKeyboard(.interactively)
             .onTapGesture {
                 // Dismiss keyboard when tapping on message list
@@ -92,18 +121,51 @@ struct ChatView: View {
                 scrollToBottom(proxy: proxy, delay: 0.5)
             }
             .onChange(of: viewModel.messages.count) { _, _ in
-                // Scroll to bottom when new message added with animation
                 scrollToBottom(proxy: proxy, delay: 0.1)
             }
+            .onChange(of: viewModel.isTyping) { _, isTyping in
+                // Scroll to bottom when typing indicator appears
+                if isTyping {
+                    scrollToBottom(proxy: proxy, delay: 0.1)
+                }
+            }
         }
+    }
+    
+    // MARK: - Date Header
+    private func dateHeader(for date: Date) -> some View {
+        let formatter = DateFormatter()
+        let calendar = Calendar.current
+        
+        if calendar.isDateInToday(date) {
+            formatter.dateFormat = "'Today'"
+        } else if calendar.isDateInYesterday(date) {
+            formatter.dateFormat = "'Yesterday'"
+        } else {
+            formatter.dateFormat = "MMMM d, yyyy"
+        }
+        
+        return Text(formatter.string(from: date))
+            .font(.caption)
+            .fontWeight(.medium)
+            .foregroundColor(.secondary)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 6)
+            .background(
+                Capsule()
+                    .fill(Color(.systemGray6))
+            )
+            .padding(.vertical, 8)
     }
     
     // MARK: - Scroll to Bottom Helper
     private func scrollToBottom(proxy: ScrollViewProxy, delay: Double = 0.1) {
         DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
             withAnimation(.easeOut(duration: 0.3)) {
-                // Scroll to the last message if available, otherwise scroll to bottom anchor
-                if let lastMessage = viewModel.messages.last {
+                // Scroll to typing indicator if visible
+                if viewModel.isTyping {
+                    proxy.scrollTo("typingIndicator", anchor: .bottom)
+                } else if let lastMessage = viewModel.messages.last {
                     proxy.scrollTo(lastMessage.id, anchor: .bottom)
                 } else {
                     proxy.scrollTo("bottomAnchor", anchor: .bottom)

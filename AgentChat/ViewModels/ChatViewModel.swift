@@ -23,6 +23,7 @@ class ChatViewModel: ObservableObject {
     @Published var selectedImage: UIImage?
     @Published var showError: Bool = false
     @Published var errorMessage: String = ""
+    @Published var isTyping: Bool = false
     
     // MARK: - Private Properties
     private let storage = MessageStorage.shared
@@ -65,18 +66,18 @@ class ChatViewModel: ObservableObject {
         guard !trimmedText.isEmpty else { return }
         
         let newMessage = Message.createTextMessage(content: trimmedText, sender: .user)
-        addMessage(newMessage)
+        addMessage(newMessage, animated: true)
         
         // Clear input
         messageText = ""
         
-        // Send simulated agent response
-        sendAgentResponse()
+        // Simulate agent typing
+        simulateAgentTyping()
     }
     
     /// Send an image message
     func sendImageMessage(image: UIImage, caption: String = "") {
-        // Save image locally
+        // Save image locally with thumbnail
         guard let savedImage = imageCache.saveImageLocally(image) else {
             showErrorMessage("Failed to save image")
             return
@@ -86,28 +87,55 @@ class ChatViewModel: ObservableObject {
             caption: caption,
             path: savedImage.path,
             fileSize: savedImage.fileSize,
-            thumbnailPath: nil,
+            thumbnailPath: savedImage.thumbnailPath,
             sender: .user
         )
         
-        addMessage(newMessage)
+        addMessage(newMessage, animated: true)
         
         // Clear selected image
         selectedImage = nil
         
-        // Send simulated agent response
-        sendAgentResponse()
+        // Simulate agent typing
+        simulateAgentTyping()
     }
     
     /// Add a message and persist
-    private func addMessage(_ message: Message) {
-        messages.append(message)
+    private func addMessage(_ message: Message, animated: Bool = false) {
+        if animated {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                messages.append(message)
+            }
+        } else {
+            messages.append(message)
+        }
         
         // Persist to storage
         storage.saveMessages(messages)
     }
     
     // MARK: - Agent Response Simulation
+    
+    /// Simulate agent typing and then send response
+    private func simulateAgentTyping() {
+        // Show typing indicator after short delay
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            withAnimation(.easeInOut(duration: 0.3)) {
+                self?.isTyping = true
+            }
+        }
+        
+        // Send response after typing delay
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) { [weak self] in
+            guard let self = self else { return }
+            
+            withAnimation(.easeInOut(duration: 0.2)) {
+                self.isTyping = false
+            }
+            
+            self.sendAgentResponse()
+        }
+    }
     
     /// Send a simulated agent response
     private func sendAgentResponse() {
@@ -116,16 +144,17 @@ class ChatViewModel: ObservableObject {
             "I understand. Let me look into that for you.",
             "Got it! Is there anything else you'd like to know?",
             "I appreciate you sharing that. Here's what I found...",
-            "Great question! Let me assist you with that."
+            "Great question! Let me assist you with that.",
+            "Thanks for the image! I can see the details clearly.",
+            "I'll process this information right away.",
+            "Perfect! I'm updating your request now."
         ]
         
         let randomResponse = responses.randomElement() ?? "Thank you for your message!"
         let agentMessage = Message.createTextMessage(content: randomResponse, sender: .agent)
         
-        // Add agent response after a short delay
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
-            self?.addMessage(agentMessage)
-        }
+        // Add agent response with animation
+        addMessage(agentMessage, animated: true)
     }
     
     // MARK: - Image Handling
@@ -164,6 +193,11 @@ class ChatViewModel: ObservableObject {
     /// Check if send button should be enabled
     var canSendMessage: Bool {
         !messageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+    
+    /// Copy message text to clipboard
+    func copyMessageText(_ message: Message) {
+        UIPasteboard.general.string = message.message
     }
     
     /// Refresh messages from storage

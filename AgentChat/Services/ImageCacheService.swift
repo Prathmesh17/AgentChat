@@ -20,6 +20,10 @@ class ImageCacheService {
     private var recentlySavedImages: [String: UIImage] = [:]
     private let recentLock = NSLock()
     
+    // Configuration
+    private let compressionQuality: CGFloat = 0.7
+    private let thumbnailSize = CGSize(width: 150, height: 150)
+    
     private var cacheDirectory: URL {
         let paths = fileManager.urls(for: .cachesDirectory, in: .userDomainMask)
         let directory = paths[0].appendingPathComponent("ImageCache")
@@ -99,20 +103,48 @@ class ImageCacheService {
             return image
         } catch {
             if (error as NSError).code != NSURLErrorCancelled {
-                print("❌ Failed to load image: \(error.localizedDescription)")
+                print(" Failed to load image: \(error.localizedDescription)")
             }
             return nil
         }
     }
     
-    /// Save image locally and return the file path
-    func saveImageLocally(_ image: UIImage, filename: String? = nil) -> (path: String, fileSize: Int)? {
+    /// Compress image to reduce file size
+    func compressImage(_ image: UIImage, quality: CGFloat? = nil) -> Data? {
+        let compressionLevel = quality ?? compressionQuality
+        return image.jpegData(compressionQuality: compressionLevel)
+    }
+    
+    /// Generate thumbnail for an image
+    func generateThumbnail(for image: UIImage, size: CGSize? = nil) -> UIImage? {
+        let targetSize = size ?? thumbnailSize
+        
+        let aspectWidth = targetSize.width / image.size.width
+        let aspectHeight = targetSize.height / image.size.height
+        let aspectRatio = min(aspectWidth, aspectHeight)
+        
+        let newSize = CGSize(
+            width: image.size.width * aspectRatio,
+            height: image.size.height * aspectRatio
+        )
+        
+        let renderer = UIGraphicsImageRenderer(size: newSize)
+        return renderer.image { context in
+            image.draw(in: CGRect(origin: .zero, size: newSize))
+        }
+    }
+    
+    /// Save image locally with compression and thumbnail generation
+    func saveImageLocally(_ image: UIImage, filename: String? = nil) -> (path: String, fileSize: Int, thumbnailPath: String?)? {
         let imageName = filename ?? UUID().uuidString
         let imageFileName = "\(imageName).jpg"
+        let thumbnailFileName = "\(imageName)_thumb.jpg"
         let imageURL = cacheDirectory.appendingPathComponent(imageFileName)
+        let thumbnailURL = cacheDirectory.appendingPathComponent(thumbnailFileName)
         
-        guard let imageData = image.jpegData(compressionQuality: 0.8) else {
-            print("❌ Failed to create JPEG data")
+        // Compress and save main image
+        guard let imageData = compressImage(image) else {
+            print("Failed to compress image")
             return nil
         }
         
@@ -125,10 +157,27 @@ class ImageCacheService {
             recentlySavedImages[savedPath] = image
             recentLock.unlock()
             
-            print("✅ Image saved: \(savedPath)")
-            return (savedPath, imageData.count)
+            // Generate and save thumbnail
+            var savedThumbnailPath: String? = nil
+            if let thumbnail = generateThumbnail(for: image),
+               let thumbnailData = thumbnail.jpegData(compressionQuality: 0.8) {
+                try thumbnailData.write(to: thumbnailURL)
+                savedThumbnailPath = thumbnailURL.path
+                
+                // Cache thumbnail too
+                recentLock.lock()
+                recentlySavedImages[thumbnailURL.path] = thumbnail
+                recentLock.unlock()
+            }
+            
+            print("Image saved: \(savedPath)")
+            if let thumbPath = savedThumbnailPath {
+                print("Thumbnail saved: \(thumbPath)")
+            }
+            
+            return (savedPath, imageData.count, savedThumbnailPath)
         } catch {
-            print("❌ Failed to save image: \(error)")
+            print(" Failed to save image: \(error)")
             return nil
         }
     }
@@ -171,9 +220,7 @@ class ImageCacheService {
             }
         }
         
-        print("❌ Could not load image from: \(path)")
-        print("   File exists: \(fileManager.fileExists(atPath: path))")
-        
+        print("Could not load image from: \(path)")
         return nil
     }
     
@@ -234,8 +281,10 @@ struct CachedAsyncImage: View {
                 guard !Task.isCancelled else { return }
                 
                 await MainActor.run {
-                    self.image = loadedImage
-                    self.isLoading = false
+                    withAnimation(.easeIn(duration: 0.2)) {
+                        self.image = loadedImage
+                        self.isLoading = false
+                    }
                 }
             } else {
                 guard !Task.isCancelled else { return }
