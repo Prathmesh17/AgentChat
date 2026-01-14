@@ -256,7 +256,8 @@
 				DEVELOPMENT_TEAM = 2LXU65YNSY;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = AgentChat/Info.plist;
+				INFOPLIST_KEY_NSCameraUsageDescription = "AgentChat needs access to your camera to take photos and share them in the chat.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "AgentChat needs access to your photo library to select and share images in the chat.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -289,7 +290,8 @@
 				DEVELOPMENT_TEAM = 2LXU65YNSY;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = AgentChat/Info.plist;
+				INFOPLIST_KEY_NSCameraUsageDescription = "AgentChat needs access to your camera to take photos and share them in the chat.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "AgentChat needs access to your photo library to select and share images in the chat.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
