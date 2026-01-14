@@ -108,6 +108,12 @@ open AgentChat.xcodeproj
 - Messages are persisted locally using UserDefaults
 - The app supports both light and dark mode
 
+## 📸 ScreenShots
+
+<img width="300" height="750" alt="Screenshot 2026-01-15 at 12 54 30 AM" src="https://github.com/user-attachments/assets/c90356b7-b0ac-4090-9350-f8845f6e6112" />
+<img width="300" height="750" alt="Screenshot 2026-01-15 at 12 55 14 AM" src="https://github.com/user-attachments/assets/1fa36fd8-1267-43a4-8af1-9cb1b827ab24" />
+<img width="300" height="750" alt="Screenshot 2026-01-15 at 12 55 20 AM" src="https://github.com/user-attachments/assets/be0eeb4f-0c3f-4b09-8046-f23c6eec4d40" />
+
 ---
 
 Built with SwiftUI
