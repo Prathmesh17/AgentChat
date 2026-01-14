@@ -17,7 +17,8 @@ AgentChat/
 │   ├── ChatView.swift          # Main chat interface
 │   └── Components/
 │       ├── MessageBubbleView.swift    # Message bubble UI
-│       ├── MessageInputBar.swift      # Text input with attachments
+│       ├── MessageComposer.swift      # Text input with attachments
+|       ├── TypingIndicatorView.swift  # Typing Indicator before agent response
 │       └── FullScreenImageView.swift  # Image viewer with zoom
 ├── Services/
 │   ├── MessageStorage.swift     # Local persistence (UserDefaults)
