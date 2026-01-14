@@ -2,7 +2,7 @@
 //  SeedData.swift
 //  AgentChat
 //
-//  Provides initial seed data for the chat application
+//  Created by Prathmesh Parteki on 14/01/26.
 //
 
 import Foundation

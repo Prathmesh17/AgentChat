@@ -2,7 +2,7 @@
 //  Message.swift
 //  AgentChat
 //
-//  Message model for chat messages between user and agent
+//  Created by Prathmesh Parteki on 14/01/26.
 //
 
 import Foundation

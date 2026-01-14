@@ -2,7 +2,7 @@
 //  ImageCacheService.swift
 //  AgentChat
 //
-//  Handles basic image loading and saving
+//  Created by Prathmesh Parteki on 14/01/26.
 //
 
 import SwiftUI

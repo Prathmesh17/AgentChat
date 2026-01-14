@@ -1,14 +1,14 @@
 //
-//  MessageInputBar.swift
+//  MessageComposer.swift
 //  AgentChat
 //
-//  Input bar for composing and sending messages
+//  Created by Prathmesh Parteki on 14/01/26.
 //
 
 import SwiftUI
 import PhotosUI
 
-struct MessageInputBar: View {
+struct MessageComposer: View {
     @Binding var messageText: String
     @Binding var showAttachmentOptions: Bool
     var canSend: Bool
@@ -111,7 +111,7 @@ struct MessageInputBar: View {
 #Preview {
     VStack {
         Spacer()
-        MessageInputBar(
+        MessageComposer(
             messageText: .constant(""),
             showAttachmentOptions: .constant(false),
             canSend: false,

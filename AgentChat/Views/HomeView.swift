@@ -2,7 +2,7 @@
 //  HomeView.swift
 //  AgentChat
 //
-//  Simple home page with navigation to chat
+//  Created by Prathmesh Parteki on 14/01/26.
 //
 
 import SwiftUI

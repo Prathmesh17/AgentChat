@@ -2,11 +2,12 @@
 //  ChatViewModel.swift
 //  AgentChat
 //
-//  ViewModel for managing chat state and business logic
+//  Created by Prathmesh Parteki on 14/01/26.
 //
 
 import SwiftUI
 import PhotosUI
+import Combine
 
 // MARK: - Chat ViewModel
 @MainActor

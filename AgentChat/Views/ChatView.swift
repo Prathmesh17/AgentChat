@@ -2,7 +2,7 @@
 //  ChatView.swift
 //  AgentChat
 //
-//  Main chat interface view with message list and input
+//  Created by Prathmesh Parteki on 14/01/26.
 //
 
 import SwiftUI
@@ -19,8 +19,8 @@ struct ChatView: View {
             // Messages List
             messagesScrollView
             
-            // Input Bar
-            MessageInputBar(
+            // Composer
+            MessageComposer(
                 messageText: $viewModel.messageText,
                 showAttachmentOptions: $viewModel.showAttachmentOptions,
                 canSend: viewModel.canSendMessage,

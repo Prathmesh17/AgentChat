@@ -2,7 +2,7 @@
 //  MessageStorage.swift
 //  AgentChat
 //
-//  Handles local persistence of chat messages using UserDefaults
+//  Created by Prathmesh Parteki on 14/01/26.
 //
 
 import Foundation
