@@ -10,7 +10,7 @@ import PhotosUI
 
 struct ChatView: View {
     @StateObject private var viewModel = ChatViewModel()
-    @State private var selectedImagePath: String?
+    @State private var selectedImagePath: String = ""
     @State private var showFullScreenImage = false
     @State private var showCamera = false
     
@@ -41,9 +41,7 @@ struct ChatView: View {
         .navigationTitle("Support Chat")
         .navigationBarTitleDisplayMode(.inline)
         .fullScreenCover(isPresented: $showFullScreenImage) {
-            if let imagePath = selectedImagePath {
-                FullScreenImageView(imagePath: imagePath)
-            }
+            FullScreenImageView(imagePath: selectedImagePath)
         }
         .sheet(isPresented: $showCamera) {
             CameraView { image in
@@ -85,13 +83,20 @@ struct ChatView: View {
             }
             .scrollDismissesKeyboard(.interactively)
             .onAppear {
-                // Scroll to bottom on appear
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                    proxy.scrollTo("bottomAnchor", anchor: .bottom)
-                }
+                // Scroll to bottom on appear with animation
+                scrollToBottom(proxy: proxy)
             }
             .onChange(of: viewModel.messages.count) { _, _ in
-                // Scroll to bottom when new message added
+                // Scroll to bottom when new message added with animation
+                scrollToBottom(proxy: proxy)
+            }
+        }
+    }
+    
+    // MARK: - Scroll to Bottom Helper
+    private func scrollToBottom(proxy: ScrollViewProxy) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            withAnimation(.easeOut(duration: 0.3)) {
                 proxy.scrollTo("bottomAnchor", anchor: .bottom)
             }
         }
