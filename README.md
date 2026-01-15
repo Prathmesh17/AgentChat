@@ -55,6 +55,16 @@ AgentChat/
 - ✅ MVVM Architecture
 - ✅ Simple home page with navigation to chat
 
+### Bonus Features
+- ✅ Enhanced UI with purple gradients and glassmorphism styling
+- ✅ Smooth animations for messages, buttons, and typing indicators
+- ✅ Smart typing indicator with "Thinking..." shimmer effect and avatar
+- ✅ Context-aware timestamps (e.g., "Just now", "Yesterday") & Date separators
+- ✅ Long-press to copy messages with "Copied" toast notification
+- ✅ Advanced gestures (double-tap or pinch to zoom)
+- ✅ Efficient image caching and thumbnail generation
+- ✅ Integrated camera support for taking photos directly
+
 ## 🚀 Setup Instructions
 
 ### Requirements
